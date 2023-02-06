@@ -2,12 +2,14 @@
 // @ts-nocheck
   import { guestBook } from '../../../../stores/guestbookSignature';
   import { createForm } from "svelte-forms-lib";
+  import { db, Timestamp, addDoc, setDoc, collection } from '../../../../firebase';
   import * as yup from "yup";
 
   /** @type {import('./$types').PageData} */
   export let data;
 
   const decks = [
+    "unknown",
     "Other",
     "2-Medical",
     "3-Plaza",
@@ -36,7 +38,8 @@
   const { form, errors, state, handleChange, handleSubmit } = createForm({
   initialValues: {
     names: "",
-    from: ""
+    from: "",
+    deck: data.hiddenObject.deck
   },
   validationSchema: yup.object().shape({
     deck: yup
@@ -51,13 +54,31 @@
   onSubmit: values => {
     formState = SAVING 
     console.log(values)
-    setTimeout(() => formState=ERROR, 4000)
+    const timeoutId = setTimeout(() => formState=ERROR, 10000)
+    // Add a new document with a generated id.
+    const docRef = addDoc(collection(db, `guestbook`), {
+      names: values.names,
+      from: values.from,
+      deck: values.deck,
+      created: Timestamp.now(),
+      hiddenObject: data.key
+    }).then(x => {
+      console.log("added",x);
+      clearTimeout(timeoutId);
+      formState=SAVED
+      return x;
+      }
+      ).catch(e => {
+        console.log("error",e);
+        formState=ERROR
+        clearTimeout(timeoutId)
+      });
   }
   });
 </script>
 
 <header>
-<h2>{data.key}</h2>
+<h2>{data.hiddenObject.displayName}</h2>
 <p>{data.hiddenObject.description}</p>
 </header>
 <div>
@@ -72,6 +93,7 @@
           on:change={handleChange}
           on:blur={handleChange}
           bind:value={$form.names}
+          placeholder="First Name(s)"
           disabled={formState==SAVING} id="names" name="names" type="text" class="field text fn">
           {#if $errors.names}
           <small>{$errors.names}</small>
@@ -82,6 +104,7 @@
           on:change={handleChange}
           on:blur={handleChange}
           bind:value={$form.from} 
+          placeholder="State / Country"
           disabled={formState==SAVING} id="from" name="from" type="text" class="field text fn" size="8">
           {#if $errors.from}
           <small>{$errors.from}</small>
@@ -90,6 +113,7 @@
           <select
           id="deck"
           name="deck"
+          disabled={formState==SAVING}
           on:change={handleChange}
           bind:value={$form.deck}>
           <option />

@@ -9,19 +9,24 @@ export async function load({ params } : { params:any }) {
     const objectSnapshot = await getDoc(doc(collection(db,`/hiddenObjects/`),hiddenObject));
 
     const hiddenObjectData = {
+        keyName: "Rubber Duck",
+        displayName: "R&T Guestbook",
         deckNumber: "unknown",
         shipLocation: "unknown",
-        description: "unknown"
+        description: "Sign Ryan and Tanner's virtual guestbook"
     }
     
-    const objectQuery = objectSnapshot.exists() ? objectSnapshot.data() : hiddenObjectData;
+    const objectQuery = objectSnapshot.exists() ? assoc("keyName",hiddenObject)(objectSnapshot.data()) : hiddenObjectData;
 
     const hiddenObjectFinal = compose(
         assoc("description",objectQuery.description),
+        assoc("deck",objectQuery.deck),
+        assoc("keyName",objectQuery.keyName),
+        assoc("displayName",objectQuery.displayName),
     )(hiddenObjectData);
 
     return {
-       key: hiddenObject,
+       key: hiddenObjectFinal.keyName,
        hiddenObject: hiddenObjectFinal
     };
 }
